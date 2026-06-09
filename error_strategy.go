@@ -5,8 +5,6 @@
 package antlr
 
 import (
-	"fmt"
-	"reflect"
 	"strconv"
 	"strings"
 )
@@ -103,8 +101,6 @@ func (d *DefaultErrorStrategy) ReportError(recognizer Parser, e RecognitionExcep
 
 	switch t := e.(type) {
 	default:
-		fmt.Println("unknown recognition error type: " + reflect.TypeOf(e).Name())
-		//            fmt.Println(e.stack)
 		recognizer.NotifyErrorListeners(e.GetMessage(), e.GetOffendingToken(), e)
 	case *NoViableAltException:
 		d.ReportNoViableAlternative(recognizer, t)
