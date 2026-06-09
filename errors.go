@@ -234,26 +234,37 @@ func (f *FailedPredicateException) formatMessage(predicate, message string) stri
 	return "failed predicate: {" + predicate + "}?"
 }
 
+// ParseCancellationException is panicked (not returned) by [BailErrorStrategy]
+// to immediately abort the parse. It wraps the original [RecognitionException]
+// that triggered the cancellation.
+//
+// In the Java runtime this class extends CancellationException, NOT
+// RecognitionException, so it escapes the parser's internal catch blocks.
+// The Go equivalent is a panic value that does not satisfy the
+// [RecognitionException] interface.
+//
+// Callers performing two-stage (SLL then LL) parsing should recover() the
+// panic and inspect [GetCause] for the underlying error.
 type ParseCancellationException struct {
+	cause RecognitionException
 }
 
-func (p ParseCancellationException) GetOffendingToken() Token {
-	//TODO implement me
-	panic("implement me")
+// GetCause returns the original [RecognitionException] that triggered the
+// cancellation, or nil if none was provided.
+func (p *ParseCancellationException) GetCause() RecognitionException {
+	return p.cause
 }
 
-func (p ParseCancellationException) GetMessage() string {
-	//TODO implement me
-	panic("implement me")
+// Error implements the error interface.
+func (p *ParseCancellationException) Error() string {
+	if p.cause != nil {
+		return "parse cancelled: " + p.cause.GetMessage()
+	}
+	return "parse cancelled"
 }
 
-func (p ParseCancellationException) GetInputStream() IntStream {
-	//TODO implement me
-	panic("implement me")
-}
-
-func NewParseCancellationException() *ParseCancellationException {
-	//	Error.call(this)
-	//	Error.captureStackTrace(this, ParseCancellationException)
-	return new(ParseCancellationException)
+// NewParseCancellationException creates a [ParseCancellationException] wrapping
+// the given cause. Pass nil if no cause is available.
+func NewParseCancellationException(cause RecognitionException) *ParseCancellationException {
+	return &ParseCancellationException{cause: cause}
 }

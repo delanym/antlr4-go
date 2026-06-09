@@ -672,10 +672,13 @@ func NewBailErrorStrategy() *BailErrorStrategy {
 	return b
 }
 
-// Recover Instead of recovering from exception e, re-panic it wrapped
-// in a [ParseCancellationException] so it is not caught by the
-// rule func catches. Use Exception.GetCause() to get the
-// original [RecognitionException].
+// Recover stamps the original exception on every ancestor context, then panics
+// with a [ParseCancellationException] so the error escapes the generated rule
+// functions and can be caught by the caller's recover().
+//
+// This matches the Java runtime, where Recover throws ParseCancellationException
+// (which is not a RecognitionException) so it bypasses the parser's internal
+// catch blocks entirely.
 func (b *BailErrorStrategy) Recover(recognizer Parser, e RecognitionException) {
 	context := recognizer.GetParserRuleContext()
 	for context != nil {
@@ -686,15 +689,14 @@ func (b *BailErrorStrategy) Recover(recognizer Parser, e RecognitionException) {
 			context = nil
 		}
 	}
-	recognizer.SetError(NewParseCancellationException()) // TODO: we don't emit e properly
+	panic(NewParseCancellationException(e))
 }
 
-// RecoverInline makes sure we don't attempt to recover inline if the parser
-// successfully recovers, it won't panic an exception.
+// RecoverInline creates an [InputMisMatchException] and delegates to [Recover],
+// which panics with a [ParseCancellationException].
 func (b *BailErrorStrategy) RecoverInline(recognizer Parser) Token {
 	b.Recover(recognizer, NewInputMisMatchException(recognizer))
-
-	return nil
+	return nil // unreachable — Recover always panics
 }
 
 // Sync makes sure we don't attempt to recover from problems in sub-rules.
